@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d1522">
+<title>Verifiche Impianti</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Verifiche">
+<meta name="mobile-web-app-capable" content="yes">
+<script src="jspdf.umd.min.js"></script>
+<script src="jspdf.autotable.min.js"></script>
+<style>
+  :root{
+    --bg:#0d1522; --surface:#152238; --surface-2:#1e2f4d;
+    --line:#2c4066; --text:#e9eef7; --muted:#8fa2c0;
+    --hv:#9edc3a; --hv-press:#8bc72f; --hvtext:#0d1522;
+    --ok:#9edc3a; --danger:#ff6b6b; --r:14px;
+    --ph:#66789a; --swknob:#0d1522; --cs:dark;
+  }
+  :root[data-theme="light"]{ --bg:#eef3ec; --surface:#ffffff; --surface-2:#e6efe2;
+      --line:#cdddc6; --text:#16224b; --muted:#5d6b7e;
+      --hv:#2a3aa0; --hv-press:#1f2c82; --ok:#4a9d2f; --danger:#d64545;
+      --ph:#93a2b3; --swknob:#ffffff; --cs:light; --hvtext:#ffffff;
+  }
+  @media (prefers-color-scheme: light){
+    :root[data-theme="auto"]{ --bg:#eef3ec; --surface:#ffffff; --surface-2:#e6efe2;
+      --line:#cdddc6; --text:#16224b; --muted:#5d6b7e;
+      --hv:#2a3aa0; --hv-press:#1f2c82; --ok:#4a9d2f; --danger:#d64545;
+      --ph:#93a2b3; --swknob:#ffffff; --cs:light; --hvtext:#ffffff;
+    }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);line-height:1.35}
+  .wrap{max-width:640px;margin:0 auto;padding:16px 16px calc(150px + env(safe-area-inset-bottom))}
+  header{display:flex;align-items:baseline;gap:10px;margin:6px 2px 14px;flex-wrap:wrap}
+  header h1{font-size:1.35rem;letter-spacing:.02em;margin:0;font-weight:800}
+  header #hdrLogo{height:30px;width:auto;border-radius:5px;align-self:center}
+  header .tag{font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--hvtext);background:var(--hv);padding:3px 8px;border-radius:6px}
+  .file-hint{margin-left:auto;font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+  .file-hint b{color:var(--hv)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px}
+  .card h2{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:700}
+  label{display:block;font-size:.8rem;color:var(--muted);margin:0 0 6px}
+  .field{margin-bottom:12px}
+  .field:last-child{margin-bottom:0}
+  select{width:100%;font-size:16px;color:var(--text);background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px;font-family:inherit;outline:none}
+  select:focus{border-color:var(--hv)}
+  input,textarea{width:100%;font-size:16px;color:var(--text);background:var(--surface-2);
+    border:1px solid var(--line);border-radius:10px;padding:12px;font-family:inherit;outline:none;transition:border-color .15s}
+  input:focus,textarea:focus{border-color:var(--hv)}
+  textarea{resize:vertical;min-height:70px}
+  input[type=date]{color-scheme:var(--cs)}
+  html{color-scheme:var(--cs)}
+  .two{display:flex;gap:10px}
+  .two>*{flex:1;min-width:0}
+  .three{display:flex;gap:10px}
+  .three>*{flex:1;min-width:0}
+  .seg{display:flex;gap:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:4px;flex-wrap:wrap}
+  .seg button{flex:1;border:none;background:transparent;color:var(--muted);font-family:inherit;
+    font-size:.86rem;font-weight:600;padding:9px 6px;border-radius:7px;cursor:pointer;min-width:56px}
+  .seg button.on{background:var(--hv);color:var(--hvtext)}
+  .seg button.on.bad{background:var(--danger);color:#fff}
+  .seg.sm button{padding:7px 4px;font-size:.76rem}
+  details.card summary{list-style:none;cursor:pointer;font-size:.72rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);font-weight:700;display:flex;justify-content:space-between;align-items:center}
+  details.card summary::-webkit-details-marker{display:none}
+  details.card summary .chev{transition:transform .2s}
+  details[open].card summary .chev{transform:rotate(180deg)}
+  details.card[open]{padding-bottom:14px}
+  details.card .body{margin-top:14px}
+  .hintline{font-size:.74rem;color:var(--muted);margin:-4px 0 12px;line-height:1.4}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px}
+  .savestate{font-size:.76rem;color:var(--muted)}
+  .savestate.ok{color:var(--ok)}
+  .reset{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:9px;
+    padding:7px 10px;font-size:.78rem;font-family:inherit;cursor:pointer;flex:none}
+  .reset:active{background:var(--surface-2)}
+  #rows .row{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;background:rgba(255,255,255,.02)}
+  #rows .row:last-child{margin-bottom:0}
+  .rhead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .rhead .rn{font-weight:700;font-size:.82rem;color:var(--hv)}
+  .rhead .rdel{margin-left:auto;flex:none;width:30px;height:30px;border:1px solid var(--line);
+    background:var(--surface-2);color:var(--muted);border-radius:8px;font-size:.9rem;line-height:1;cursor:pointer;padding:0}
+  .rhead .rdel:active{background:var(--danger);color:#fff;border-color:var(--danger)}
+  .rgrid{display:flex;flex-wrap:wrap;gap:8px}
+  .rgrid .f{flex:1 1 45%;min-width:130px}
+  .rgrid .f.full{flex:1 1 100%}
+  .rgrid .f label{font-size:.72rem;margin-bottom:4px}
+  .rgrid .f input,.rgrid .f select{padding:9px 10px;font-size:15px}
+  .addrow{width:100%;background:transparent;border:1px dashed var(--line);color:var(--hv);
+    padding:11px;border-radius:10px;font-weight:600;font-size:.92rem;cursor:pointer;margin-top:2px}
+  .addrow:active{background:var(--surface-2)}
+  .aempty{color:var(--muted);font-size:.85rem;padding:10px 2px;text-align:center}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(to top,var(--bg) 72%,transparent);
+    padding:12px 16px calc(14px + env(safe-area-inset-bottom));z-index:20}
+  .bar-inner{max-width:640px;margin:0 auto;display:flex;gap:10px}
+  .btn{flex:1;border:none;border-radius:12px;padding:15px;font-size:1rem;font-weight:800;cursor:pointer;font-family:inherit}
+  .btn-primary{background:var(--hv);color:var(--hvtext);flex:2}
+  .btn-primary:active{background:var(--hv-press)}
+  .btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--line)}
+  .btn-ghost:active{background:var(--surface)}
+  .btn:disabled{opacity:.5}
+  .toast{position:fixed;left:50%;bottom:96px;transform:translate(-50%,20px);background:var(--surface-2);
+    border:1px solid var(--line);color:var(--text);padding:11px 16px;border-radius:10px;font-size:.86rem;
+    opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:30;max-width:88%;text-align:center}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .toast.err{border-color:var(--danger);color:#ffb3b3}
+  .sigwrap{border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden;touch-action:none}
+  .sigwrap canvas{display:block;width:100%;height:150px}
+  .sigrow{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+  .sigrow button{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;
+    padding:6px 10px;font-size:.78rem;font-family:inherit;cursor:pointer}
+  .sigrow .siglbl{font-size:.78rem;color:var(--muted)}
+  .arow{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);font-size:.86rem}
+  .arow:last-child{border-bottom:none}
+  .arow .ainfo{flex:1;min-width:0}
+  .arow .anum{font-weight:700;color:var(--text)}
+  .arow .asub{color:var(--muted);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .arow .aesito{flex:none;font-size:.7rem;font-weight:700;padding:3px 8px;border-radius:6px;text-transform:uppercase}
+  .arow .aesito.c{background:rgba(158,220,58,.18);color:var(--ok)}
+  .arow .aesito.nc{background:rgba(255,107,107,.18);color:var(--danger)}
+  .arow .aesito.p{background:rgba(255,193,102,.18);color:#ffc166}
+  .arow button.adel{flex:none;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);
+    border-radius:8px;width:30px;height:30px;font-size:.85rem;line-height:1;cursor:pointer;padding:0}
+  .arow button.adel:active{background:var(--danger);color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img id="hdrLogo" alt="Ten Solutions">
+    <h1>Verifiche</h1>
+    <span class="tag">impianti elettrici</span>
+    <span class="file-hint">n. <b id="fileName">—</b></span>
+  </header>
+
+  <div class="toolbar"><span class="savestate" id="saveState">salvataggio automatico attivo</span><button class="reset" id="btnReset">Nuova verifica</button></div>
+
+  <details class="card" open>
+    <summary>1. Dati identificativi <span class="chev">&#9662;</span></summary>
+    <div class="body">
+      <div class="two">
+        <div class="field"><label for="numero">Rapporto n.</label><input id="numero" type="text" placeholder="es. 2026-001"></div>
+        <div class="field"><label for="dataVerifica">Data verifica</label><input id="dataVerifica" type="date"></div>
+      </div>
+      <div class="field"><label for="committente">Committente</label><input id="committente" type="text" placeholder="Ragione sociale / nome"></div>
+      <div class="field"><label for="ubicazione">Ubicazione impianto</label><input id="ubicazione" type="text" placeholder="Indirizzo"></div>
+      <div class="two">
+        <div class="field"><label for="attivita">Attivit&agrave; / destinazione d'uso</label><input id="attivita" type="text"></div>
+        <div class="field"><label for="verificatore">Verificatore</label><input id="verificatore" type="text" list="verifList" autocomplete="off"><datalist id="verifList"></datalist></div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Tipo di verifica</label>
+        <div class="seg" id="segTipoVerifica" data-val="prima">
+          <button type="button" data-v="prima">Prima</button>
+          <button type="button" data-v="periodica">Periodica</button>
+          <button type="button" data-v="straordinaria">Straordinaria</button>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary>2. Dati generali dell'impianto <span class="chev">&#9662;</span></summary>
+    <div class="body">
+      <div class="three">
+        <div class="field"><label for="tensione">Tensione (V)</label><input id="tensione" type="text" inputmode="decimal"></div>
+        <div class="field"><label for="frequenza">Frequenza (Hz)</label><input id="frequenza" type="text" inputmode="decimal"></div>
+        <div class="field"><label for="potenza">Potenza (kW)</label><input id="potenza" type="text" inputmode="decimal"></div>
+      </div>
+      <div class="field">
+        <label>Sistema</label>
+        <div class="seg" id="segSistema" data-val="TT">
+          <button type="button" data-v="TT">TT</button>
+          <button type="button" data-v="TN-S">TN-S</button>
+          <button type="button" data-v="TN-C">TN-C</button>
+          <button type="button" data-v="IT">IT</button>
+        </div>
+      </div>
+      <div class="two" style="margin-bottom:0">
+        <div class="field" style="margin-bottom:0"><label for="icc">Corrente c.to presunta Icc (kA)</label><input id="icc" type="text" inputmode="decimal"></div>
+        <div class="field" style="margin-bottom:0"><label for="inGen">Interruttore generale In (A)</label><input id="inGen" type="text" inputmode="decimal"></div>
+      </div>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary>3. Misura dell'impianto di terra <span class="chev">&#9662;</span></summary>
+    <div class="body">
+      <div class="two">
+        <div class="field"><label for="terraR">Resistenza di terra R (&Omega;)</label><input id="terraR" type="text" inputmode="decimal"></div>
+        <div class="field"><label for="terraMetodo">Metodo di misura</label><input id="terraMetodo" type="text"></div>
+      </div>
+      <div class="two">
+        <div class="field"><label for="terraStrumento">Strumento utilizzato</label><input id="terraStrumento" type="text"></div>
+        <div class="field"><label for="terraIdnMax">I&Delta;n max (A)</label><input id="terraIdnMax" type="text" inputmode="decimal"></div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Coordinamento R &times; I&Delta;n &le; 50 V</label>
+        <div class="seg" id="segCoord" data-val="si">
+          <button type="button" data-v="si">Verificato</button>
+          <button type="button" data-v="no">Non verificato</button>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary>4. Continuit&agrave; conduttori PE / EQP <span class="chev">&#9662;</span></summary>
+    <div class="body">
+      <div id="rowsPe"></div>
+      <div class="aempty" id="peEmpty" style="display:none">Nessun punto di misura inserito</div>
+      <button type="button" class="addrow" data-add="pe">+ Aggiungi punto di misura</button>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary>5. Resistenza di isolamento <span class="chev">&#9662;</span></summary>
+    <div class="body">
+      <div id="rowsIsol"></div>
+      <div class="aempty" id="isolEmpty" style="display:none">Nessun circuito inserito</div>
+      <button type="button" class="addrow" data-add="isol">+ Aggiungi circuito</button>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary>6. Prove dispositivi differenziali <span class="chev">&#9662;</span></summary>
+    <div class="body">
+      <div class="field"><label for="diffStrumento">Strumento utilizzato</label><input id="diffStrumento" type="text"></div>
+      <div id="rowsDiff"></div>
+      <div class="aempty" id="diffEmpty" style="display:none">Nessun circuito inserito</div>
+      <button type="button" class="addrow" data-add="diff">+ Aggiungi circuito</button>
+      <div class="field" style="margin-top:12px;margin-bottom:0"><label for="diffNote">Note prove differenziali</label><textarea id="diffNote"></textarea></div>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary>7. Verifica illuminazione di emergenza <span class="chev">&#9662;</span></summary>
+    <div class="body">
+      <div class="hintline">SA = Sempre Accesa &middot; SE = Solo Emergenza</div>
+      <div id="rowsEmerg"></div>
+      <div class="aempty" id="emergEmpty" style="display:none">Nessuna lampada inserita</div>
+      <button type="button" class="addrow" data-add="emerg">+ Aggiungi lampada</button>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary>8. Esito della verifica e prescrizioni <span class="chev">&#9662;</span></summary>
+    <div class="body">
+      <div class="field">
+        <label>Esito complessivo</label>
+        <div class="seg" id="segEsito" data-val="conforme">
+          <button type="button" data-v="conforme">Conforme</button>
+          <button type="button" data-v="prescrizioni">Con prescrizioni</button>
+          <button type="button" data-v="nonconforme">Non conforme</button>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0"><label for="osservazioni">Osservazioni / prescrizioni / difformit&agrave; rilevate</label><textarea id="osservazioni" style="min-height:96px"></textarea></div>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary>9. Data e firme <span class="chev">&#9662;</span></summary>
+    <div class="body">
+      <div class="field"><label for="luogoData">Luogo e data</label><input id="luogoData" type="text" placeholder="es. Pont-Saint-Martin, 31/07/2026"></div>
+      <div class="field">
+        <label>Il Tecnico / Verificatore</label>
+        <div class="sigwrap"><canvas id="sigTec"></canvas></div>
+        <div class="sigrow"><span class="siglbl" id="sigTecState">firma vuota</span><button type="button" data-clearsig="sigTec">Cancella</button></div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Il Committente</label>
+        <div class="sigwrap"><canvas id="sigCom"></canvas></div>
+        <div class="sigrow"><span class="siglbl" id="sigComState">firma vuota</span><button type="button" data-clearsig="sigCom">Cancella</button></div>
+      </div>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary>Verifiche salvate <span class="chev">&#9662;</span></summary>
+    <div class="body" id="archList"><div class="aempty">Nessuna verifica salvata</div></div>
+  </details>
+</div>
+
+<div class="bar"><div class="bar-inner">
+  <button class="btn btn-ghost" id="btnSave">Salva</button>
+  <button class="btn btn-primary" id="btnPdf">Genera PDF</button>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+
+function toast(msg,isErr){const t=$('toast');t.textContent=msg;t.className='toast show'+(isErr?' err':'');
+  clearTimeout(toast._t);toast._t=setTimeout(()=>t.className='toast',2200);}
+
+function todayISO(){const d=new Date();const l=new Date(d-d.getTimezoneOffset()*60000);return l.toISOString().slice(0,10);}
+function ddmmyy(iso){if(!iso)return '';const[y,m,d]=iso.split('-');return d+'/'+m+'/'+y;}
+function slug(s){return (s||'').trim().replace(/\s+/g,'_').replace(/[\/\\:*?"<>|]/g,'');}
+
+/* ---------- Segmented controls ---------- */
+function initSeg(id){
+  const seg=$(id);
+  seg.addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b)return;
+    seg.dataset.val=b.dataset.v;
+    [...seg.children].forEach(c=>c.classList.toggle('on',c===b));
+    scheduleSave();
+  });
+}
+function setSeg(id,val){
+  const seg=$(id);seg.dataset.val=val;
+  [...seg.children].forEach(c=>c.classList.toggle('on',c.dataset.v===val));
+}
+['segTipoVerifica','segSistema','segCoord','segEsito'].forEach(initSeg);
+
+/* ---------- Dynamic rows ---------- */
+const ROWSPEC={
+  pe:{container:'rowsPe',empty:'peEmpty',fields:[
+      {k:'punto',label:"Punto di misura verificato",type:'text',w:'full'},
+      {k:'r',label:'R (\u03A9)',type:'text',w:'half'},
+      {k:'esito',label:'Esito',type:'seg',opts:['C','NC'],w:'half'}
+    ]},
+  isol:{container:'rowsIsol',empty:'isolEmpty',fields:[
+      {k:'circuito',label:'Circuito',type:'text',w:'half'},
+      {k:'tra',label:'Tra',type:'text',w:'half'},
+      {k:'vprova',label:'V prova (V)',type:'text',w:'half'},
+      {k:'risol',label:'R isol. (M\u03A9)',type:'text',w:'half'},
+      {k:'esito',label:'Esito',type:'seg',opts:['C','NC'],w:'full'}
+    ]},
+  diff:{container:'rowsDiff',empty:'diffEmpty',fields:[
+      {k:'circuito',label:'Circuito / Ubicazione',type:'text',w:'full'},
+      {k:'in',label:'In (A)',type:'text',w:'half'},
+      {k:'idn',label:'I\u0394n (mA)',type:'text',w:'half'},
+      {k:'tipo',label:'Tipo',type:'seg',opts:['AC','A','F','B','B+'],w:'full'},
+      {k:'tIdn',label:'t @ I\u0394n (ms)',type:'text',w:'half'},
+      {k:'t5Idn',label:'t @ 5I\u0394n (ms)',type:'text',w:'half'},
+      {k:'iInter',label:'I inter. (mA)',type:'text',w:'half'},
+      {k:'tastoTest',label:'Tasto test',type:'seg',opts:['OK','NO'],w:'half'},
+      {k:'esito',label:'Esito',type:'seg',opts:['C','NC'],w:'full'}
+    ]},
+  emerg:{container:'rowsEmerg',empty:'emergEmpty',fields:[
+      {k:'ubicazione',label:"Ubicazione / N. lampada",type:'text',w:'full'},
+      {k:'tipo',label:'Tipo',type:'seg',opts:['SA','SE'],w:'half'},
+      {k:'autDich',label:'Autonomia dichiarata',type:'text',w:'half'},
+      {k:'autRil',label:'Autonomia rilevata',type:'text',w:'half'},
+      {k:'esito',label:'Esito',type:'seg',opts:['C','NC'],w:'half'}
+    ]}
+};
+
+function addRow(section,values){
+  values=values||{};
+  const spec=ROWSPEC[section];
+  const cont=$(spec.container);
+  const row=document.createElement('div');
+  row.className='row';row.dataset.section=section;
+  const head=document.createElement('div');head.className='rhead';
+  const rn=document.createElement('span');rn.className='rn';
+  const rdel=document.createElement('button');rdel.type='button';rdel.className='rdel';rdel.textContent='\u2715';
+  rdel.addEventListener('click',()=>{row.remove();renumber(section);toggleEmpty(section);scheduleSave();});
+  head.appendChild(rn);head.appendChild(rdel);
+  const grid=document.createElement('div');grid.className='rgrid';
+  spec.fields.forEach(f=>{
+    const wrap=document.createElement('div');wrap.className='f'+(f.w==='full'?' full':'');
+    const lbl=document.createElement('label');lbl.textContent=f.label;wrap.appendChild(lbl);
+    if(f.type==='text'){
+      const inp=document.createElement('input');inp.type='text';inp.dataset.k=f.k;
+      inp.value=values[f.k]||'';wrap.appendChild(inp);
+    }else if(f.type==='seg'){
+      const seg=document.createElement('div');seg.className='seg sm';seg.dataset.k=f.k;
+      const val=values[f.k]||f.opts[0];seg.dataset.val=val;
+      f.opts.forEach(o=>{
+        const b=document.createElement('button');b.type='button';b.dataset.v=o;b.textContent=o;
+        if(o===val)b.classList.add('on');
+        if((o==='NC')&&o===val)b.classList.add('bad');
+        seg.appendChild(b);
+      });
+      seg.addEventListener('click',e=>{
+        const b=e.target.closest('button');if(!b)return;
+        seg.dataset.val=b.dataset.v;
+        [...seg.children].forEach(c=>{c.classList.toggle('on',c===b);c.classList.toggle('bad',c===b&&c.dataset.v==='NC');});
+        scheduleSave();
+      });
+      wrap.appendChild(seg);
+    }
+    grid.appendChild(wrap);
+  });
+  row.appendChild(head);row.appendChild(grid);
+  cont.appendChild(row);
+  renumber(section);toggleEmpty(section);
+}
+function renumber(section){
+  const spec=ROWSPEC[section];
+  [...$(spec.container).children].forEach((row,i)=>{row.querySelector('.rn').textContent='N. '+(i+1);});
+}
+function toggleEmpty(section){
+  const spec=ROWSPEC[section];
+  $(spec.empty).style.display=$(spec.container).children.length?'none':'block';
+}
+function getRows(section){
+  const spec=ROWSPEC[section];
+  return [...$(spec.container).children].map(row=>{
+    const o={};
+    spec.fields.forEach(f=>{
+      if(f.type==='text')o[f.k]=row.querySelector('input[data-k="'+f.k+'"]').value.trim();
+      else o[f.k]=row.querySelector('.seg[data-k="'+f.k+'"]').dataset.val;
+    });
+    return o;
+  });
+}
+function setRows(section,arr){
+  const spec=ROWSPEC[section];
+  $(spec.container).innerHTML='';
+  (arr||[]).forEach(v=>addRow(section,v));
+  toggleEmpty(section);
+}
+document.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',()=>{addRow(b.dataset.add);scheduleSave();}));
+
+/* ---------- Firme (canvas) ---------- */
+const sigState={};
+function setupSig(id){
+  const wrap=document.querySelector('#'+id).parentElement;
+  const canvas=$(id);
+  function resize(){
+    const rect=wrap.getBoundingClientRect();
+    const dpr=window.devicePixelRatio||1;
+    const prev=sigState[id]&&sigState[id].drawn?canvas.toDataURL():null;
+    canvas.width=rect.width*dpr;canvas.height=150*dpr;
+    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+    ctx.lineWidth=2.2;ctx.lineCap='round';ctx.strokeStyle='#152238';
+    sigState[id]={ctx,drawing:false,drawn:sigState[id]?sigState[id].drawn:false};
+    if(prev){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,rect.width,150);img.src=prev;}
+  }
+  resize();
+  window.addEventListener('resize',resize);
+  function pos(e){const r=canvas.getBoundingClientRect();const t=e.touches?e.touches[0]:e;
+    return {x:t.clientX-r.left,y:t.clientY-r.top};}
+  function start(e){e.preventDefault();const s=sigState[id];s.drawing=true;const p=pos(e);s.ctx.beginPath();s.ctx.moveTo(p.x,p.y);}
+  function move(e){const s=sigState[id];if(!s.drawing)return;e.preventDefault();const p=pos(e);s.ctx.lineTo(p.x,p.y);s.ctx.stroke();
+    if(!s.drawn){s.drawn=true;updateSigLabel(id);}}
+  function end(){const s=sigState[id];s.drawing=false;scheduleSave();}
+  canvas.addEventListener('mousedown',start);canvas.addEventListener('mousemove',move);
+  window.addEventListener('mouseup',end);
+  canvas.addEventListener('touchstart',start,{passive:false});canvas.addEventListener('touchmove',move,{passive:false});
+  canvas.addEventListener('touchend',end);
+}
+function updateSigLabel(id){
+  const lbl=id==='sigTec'?$('sigTecState'):$('sigComState');
+  lbl.textContent=sigState[id]&&sigState[id].drawn?'firmato':'firma vuota';
+}
+function clearSig(id){
+  const canvas=$(id);const s=sigState[id];
+  s.ctx.clearRect(0,0,canvas.width,canvas.height);s.drawn=false;updateSigLabel(id);scheduleSave();
+}
+function sigDataURL(id){return sigState[id]&&sigState[id].drawn?$(id).toDataURL('image/png'):null;}
+function sigLoad(id,dataURL){
+  if(!dataURL)return;
+  const canvas=$(id);const s=sigState[id];const rect=canvas.parentElement.getBoundingClientRect();
+  const img=new Image();img.onload=()=>{s.ctx.drawImage(img,0,0,rect.width,150);s.drawn=true;updateSigLabel(id);};img.src=dataURL;
+}
+setupSig('sigTec');setupSig('sigCom');
+document.querySelectorAll('[data-clearsig]').forEach(b=>b.addEventListener('click',()=>clearSig(b.dataset.clearsig)));
+
+/* ---------- Verificatore (memoria nomi) ---------- */
+function fillVerifList(){$('verifList').innerHTML=LS.get('verificatori',[]).map(v=>'<option value="'+v+'">').join('');}
+function rememberVerif(v){v=(v||'').trim();if(!v)return;let a=LS.get('verificatori',[]);
+  a=[v].concat(a.filter(x=>x.toLowerCase()!==v.toLowerCase())).slice(0,12);LS.set('verificatori',a);fillVerifList();}
+fillVerifList();
+
+/* ---------- Collect / populate ---------- */
+function collect(){
+  return{
+    numero:$('numero').value.trim(), dataVerifica:$('dataVerifica').value,
+    committente:$('committente').value.trim(), ubicazione:$('ubicazione').value.trim(),
+    attivita:$('attivita').value.trim(), verificatore:$('verificatore').value.trim(),
+    tipoVerifica:$('segTipoVerifica').dataset.val,
+    tensione:$('tensione').value.trim(), frequenza:$('frequenza').value.trim(), potenza:$('potenza').value.trim(),
+    sistema:$('segSistema').dataset.val, icc:$('icc').value.trim(), inGen:$('inGen').value.trim(),
+    terraR:$('terraR').value.trim(), terraMetodo:$('terraMetodo').value.trim(),
+    terraStrumento:$('terraStrumento').value.trim(), terraIdnMax:$('terraIdnMax').value.trim(),
+    coordinamento:$('segCoord').dataset.val,
+    pe:getRows('pe'), isol:getRows('isol'),
+    diffStrumento:$('diffStrumento').value.trim(), diff:getRows('diff'), diffNote:$('diffNote').value.trim(),
+    emerg:getRows('emerg'),
+    esitoComplessivo:$('segEsito').dataset.val, osservazioni:$('osservazioni').value.trim(),
+    luogoData:$('luogoData').value.trim(),
+    sigTec:sigDataURL('sigTec'), sigCom:sigDataURL('sigCom')
+  };
+}
+function populate(d){
+  d=d||{};
+  $('numero').value=d.numero||''; $('dataVerifica').value=d.dataVerifica||todayISO();
+  $('committente').value=d.committente||''; $('ubicazione').value=d.ubicazione||'';
+  $('attivita').value=d.attivita||''; $('verificatore').value=d.verificatore||LS.get('verificatori',[])[0]||'';
+  setSeg('segTipoVerifica',d.tipoVerifica||'prima');
+  $('tensione').value=d.tensione||''; $('frequenza').value=d.frequenza||''; $('potenza').value=d.potenza||'';
+  setSeg('segSistema',d.sistema||'TT');
+  $('icc').value=d.icc||''; $('inGen').value=d.inGen||'';
+  $('terraR').value=d.terraR||''; $('terraMetodo').value=d.terraMetodo||'';
+  $('terraStrumento').value=d.terraStrumento||''; $('terraIdnMax').value=d.terraIdnMax||'';
+  setSeg('segCoord',d.coordinamento||'si');
+  setRows('pe',d.pe||[]); setRows('isol',d.isol||[]);
+  $('diffStrumento').value=d.diffStrumento||''; setRows('diff',d.diff||[]); $('diffNote').value=d.diffNote||'';
+  setRows('emerg',d.emerg||[]);
+  setSeg('segEsito',d.esitoComplessivo||'conforme');
+  $('osservazioni').value=d.osservazioni||'';
+  $('luogoData').value=d.luogoData||'';
+  clearSig('sigTec');clearSig('sigCom');
+  setTimeout(()=>{sigLoad('sigTec',d.sigTec);sigLoad('sigCom',d.sigCom);},60);
+  updateFileName();
+}
+function updateFileName(){$('fileName').textContent=$('numero').value.trim()||'\u2014';}
+
+/* ---------- Autosave bozza ---------- */
+let saveTimer=null;
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveDraft,500);}
+function saveDraft(){
+  const d=collect();LS.set('verifiche_draft',d);updateFileName();
+  const el=$('saveState');el.textContent='bozza salvata';el.classList.add('ok');
+  clearTimeout(saveDraft._t);saveDraft._t=setTimeout(()=>{el.textContent='salvataggio automatico attivo';el.classList.remove('ok');},1500);
+}
+document.addEventListener('input',e=>{if(e.target.closest('.wrap'))scheduleSave();});
+
+/* ---------- Nuova verifica ---------- */
+$('btnReset').addEventListener('click',()=>{
+  if(!confirm('Iniziare una nuova verifica? La bozza corrente verr\u00e0 sostituita (resta comunque salvata se gi\u00e0 archiviata).'))return;
+  populate({dataVerifica:todayISO(),verificatore:LS.get('verificatori',[])[0]||''});
+  scheduleSave();
+  toast('Nuova verifica pronta');
+});
+
+/* ---------- Archivio ---------- */
+function archKey(d){return (d.numero||'senza-numero')+'|'+(d.dataVerifica||'');}
+function loadArch(){return LS.get('verifiche_archivio',{});}
+function saveArch(a){LS.set('verifiche_archivio',a);}
+function esitoLabel(v){return v==='conforme'?'Conforme':v==='nonconforme'?'Non conf.':'Prescrizioni';}
+function esitoClass(v){return v==='conforme'?'c':v==='nonconforme'?'nc':'p';}
+function renderArch(){
+  const a=loadArch();const keys=Object.keys(a).sort((x,y)=>(a[y].dataVerifica||'').localeCompare(a[x].dataVerifica||''));
+  const box=$('archList');
+  if(!keys.length){box.innerHTML='<div class="aempty">Nessuna verifica salvata</div>';return;}
+  box.innerHTML='';
+  keys.forEach(k=>{
+    const d=a[k];const row=document.createElement('div');row.className='arow';
+    row.innerHTML='<div class="ainfo"><div class="anum">'+(d.numero||'senza numero')+' &middot; '+(d.committente||'—')+'</div>'+
+      '<div class="asub">'+ddmmyy(d.dataVerifica)+' &middot; '+(d.ubicazione||'')+'</div></div>'+
+      '<span class="aesito '+esitoClass(d.esitoComplessivo)+'">'+esitoLabel(d.esitoComplessivo)+'</span>'+
+      '<button type="button" class="adel">\u2715</button>';
+    row.querySelector('.ainfo').addEventListener('click',()=>{populate(d);toast('Verifica caricata');});
+    row.querySelector('.aesito').addEventListener('click',()=>{populate(d);toast('Verifica caricata');});
+    row.querySelector('.adel').addEventListener('click',()=>{
+      if(!confirm('Eliminare questa verifica dall\u2019archivio?'))return;
+      const arc=loadArch();delete arc[k];saveArch(arc);renderArch();toast('Verifica eliminata');
+    });
+    box.appendChild(row);
+  });
+}
+$('btnSave').addEventListener('click',()=>{
+  const d=collect();
+  if(!d.committente||!d.dataVerifica){toast('Inserisci almeno committente e data',true);return;}
+  if(!d.numero)d.numero='SN-'+Date.now().toString().slice(-6);
+  const arc=loadArch();arc[archKey(d)]=d;saveArch(arc);
+  $('numero').value=d.numero;updateFileName();
+  renderArch();saveDraft();
+  toast('Verifica salvata in archivio');
+});
+
+/* ---------- PDF ---------- */
+function addSectionBar(doc,title,y){
+  doc.setFillColor(21,34,56);doc.rect(14,y,182,7,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont(undefined,'bold');
+  doc.text(title,17,y+5);
+  doc.setTextColor(20,20,20);doc.setFont(undefined,'normal');
+  return y+11;
+}
+function kvTable(doc,pairs,y){
+  doc.autoTable({startY:y,margin:{left:14,right:14},theme:'plain',styles:{fontSize:9,cellPadding:1.2},
+    columnStyles:{0:{fontStyle:'bold',cellWidth:52,textColor:[90,100,120]},1:{textColor:[20,20,20]}},
+    body:pairs.filter(p=>p[1]!==undefined)});
+  return doc.lastAutoTable.finalY+4;
+}
+function rowsTable(doc,head,rows,y){
+  doc.autoTable({startY:y,margin:{left:14,right:14},head:[head],body:rows,
+    theme:'grid',styles:{fontSize:8,cellPadding:2},
+    headStyles:{fillColor:[30,47,77],textColor:255,fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[245,247,250]}});
+  return doc.lastAutoTable.finalY+6;
+}
+function ensureSpace(doc,y,need){
+  if(y+need>282){doc.addPage();return 16;}
+  return y;
+}
+function generatePDF(){
+  const d=collect();
+  if(!d.committente||!d.dataVerifica){toast('Inserisci almeno committente e data',true);return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  let y=16;
+  doc.setFontSize(15);doc.setFont(undefined,'bold');doc.setTextColor(21,34,56);
+  doc.text('VERIFICA IMPIANTO ELETTRICO',14,y);y+=6;
+  doc.setFontSize(9);doc.setFont(undefined,'normal');doc.setTextColor(100,110,125);
+  doc.text("Rapporto di verifica / collaudo - CEI 64-8, DPR 462/01",14,y);y+=3;
+  doc.setDrawColor(210,215,225);doc.line(14,y+2,196,y+2);y+=8;
+  doc.setTextColor(20,20,20);
+
+  y=addSectionBar(doc,'1. DATI IDENTIFICATIVI',y);
+  y=kvTable(doc,[
+    ['Rapporto n.',d.numero||'—'],['Data verifica',ddmmyy(d.dataVerifica)||'—'],
+    ['Committente',d.committente||'—'],['Ubicazione impianto',d.ubicazione||'—'],
+    ["Attivit\u00e0 / destinazione d'uso",d.attivita||'—'],['Verificatore',d.verificatore||'—'],
+    ['Tipo di verifica',{prima:'Prima verifica',periodica:'Periodica',straordinaria:'Straordinaria'}[d.tipoVerifica]]
+  ],y);
+
+  y=addSectionBar(doc,"2. DATI GENERALI DELL'IMPIANTO",y);
+  y=kvTable(doc,[
+    ['Tensione (V)',d.tensione||'—'],['Frequenza (Hz)',d.frequenza||'—'],['Potenza (kW)',d.potenza||'—'],
+    ['Sistema',d.sistema],['Corrente c.to presunta Icc (kA)',d.icc||'—'],['Interruttore generale In (A)',d.inGen||'—']
+  ],y);
+
+  y=addSectionBar(doc,"3. MISURA DELL'IMPIANTO DI TERRA",y);
+  y=kvTable(doc,[
+    ['Resistenza di terra R (\u03A9)',d.terraR||'—'],['Metodo di misura',d.terraMetodo||'—'],
+    ['Strumento utilizzato',d.terraStrumento||'—'],['I\u0394n max (A)',d.terraIdnMax||'—'],
+    ['Coordinamento R \u00d7 I\u0394n \u2264 50 V',d.coordinamento==='si'?'Verificato':'Non verificato']
+  ],y);
+
+  y=ensureSpace(doc,y,24);
+  y=addSectionBar(doc,"4. CONTINUIT\u00c0 DEI CONDUTTORI DI PROTEZIONE (PE / EQP)",y);
+  if(d.pe.length){
+    y=rowsTable(doc,['N.','Punto di misura verificato','R (\u03A9)','Esito'],
+      d.pe.map((r,i)=>[i+1,r.punto,r.r,r.esito]),y);
+  }else{doc.setFontSize(9);doc.setTextColor(140,140,140);doc.text('Nessun dato inserito',14,y+2);doc.setTextColor(20,20,20);y+=8;}
+
+  y=ensureSpace(doc,y,24);
+  y=addSectionBar(doc,'5. RESISTENZA DI ISOLAMENTO',y);
+  if(d.isol.length){
+    y=rowsTable(doc,['N.','Circuito','Tra','V prova (V)','R isol. (M\u03A9)','Esito'],
+      d.isol.map((r,i)=>[i+1,r.circuito,r.tra,r.vprova,r.risol,r.esito]),y);
+  }else{doc.setFontSize(9);doc.setTextColor(140,140,140);doc.text('Nessun dato inserito',14,y+2);doc.setTextColor(20,20,20);y+=8;}
+
+  y=ensureSpace(doc,y,30);
+  y=addSectionBar(doc,'6. PROVE DEI DISPOSITIVI DIFFERENZIALI',y);
+  y=kvTable(doc,[['Strumento utilizzato',d.diffStrumento||'—']],y);
+  if(d.diff.length){
+    y=rowsTable(doc,['N.','Circuito / Ubicazione','In (A)','I\u0394n (mA)','Tipo','t@I\u0394n (ms)','t@5I\u0394n (ms)','I int. (mA)','Tasto test','Esito'],
+      d.diff.map((r,i)=>[i+1,r.circuito,r.in,r.idn,r.tipo,r.tIdn,r.t5Idn,r.iInter,r.tastoTest,r.esito]),y);
+  }else{doc.setFontSize(9);doc.setTextColor(140,140,140);doc.text('Nessun dato inserito',14,y+2);doc.setTextColor(20,20,20);y+=8;}
+  if(d.diffNote){doc.setFontSize(9);doc.setTextColor(90,100,120);
+    const lines=doc.splitTextToSize('Note: '+d.diffNote,182);doc.text(lines,14,y);y+=lines.length*4+4;doc.setTextColor(20,20,20);}
+
+  y=ensureSpace(doc,y,24);
+  y=addSectionBar(doc,'7. VERIFICA ILLUMINAZIONE DI EMERGENZA',y);
+  if(d.emerg.length){
+    y=rowsTable(doc,['N.','Ubicazione / N. lampada','Tipo','Autonomia dich.','Autonomia ril.','Esito'],
+      d.emerg.map((r,i)=>[i+1,r.ubicazione,r.tipo,r.autDich,r.autRil,r.esito]),y);
+  }else{doc.setFontSize(9);doc.setTextColor(140,140,140);doc.text('Nessun dato inserito',14,y+2);doc.setTextColor(20,20,20);y+=8;}
+
+  y=ensureSpace(doc,y,30);
+  y=addSectionBar(doc,'8. ESITO DELLA VERIFICA E PRESCRIZIONI',y);
+  const esitoTxt={conforme:'CONFORME',nonconforme:'NON CONFORME',prescrizioni:'CONFORME CON PRESCRIZIONI'}[d.esitoComplessivo];
+  y=kvTable(doc,[['Esito complessivo',esitoTxt]],y);
+  if(d.osservazioni){doc.setFontSize(9);
+    const lines=doc.splitTextToSize(d.osservazioni,182);
+    y=ensureSpace(doc,y,lines.length*4+6);
+    doc.text(lines,14,y);y+=lines.length*4+6;}
+
+  y=ensureSpace(doc,y,70);
+  y=addSectionBar(doc,'9. DATA E FIRME',y);
+  doc.setFontSize(9);doc.text('Luogo e data: '+(d.luogoData||'—'),14,y);y+=8;
+  const sigW=86,sigH=28;
+  doc.setFontSize(8);doc.setTextColor(90,100,120);
+  doc.text('Il Tecnico / Verificatore',14,y);doc.text('Il Committente',110,y);y+=2;
+  doc.setDrawColor(210,215,225);
+  doc.rect(14,y,sigW,sigH);doc.rect(110,y,sigW,sigH);
+  if(d.sigTec)doc.addImage(d.sigTec,'PNG',15,y+1,sigW-2,sigH-2,undefined,'FAST');
+  if(d.sigCom)doc.addImage(d.sigCom,'PNG',111,y+1,sigW-2,sigH-2,undefined,'FAST');
+  doc.setTextColor(20,20,20);
+
+  const pages=doc.internal.getNumberOfPages();
+  for(let p=1;p<=pages;p++){
+    doc.setPage(p);doc.setFontSize(7);doc.setTextColor(150,155,165);
+    doc.text("Modello di verifica impianti elettrici - conforme alla prassi CEI 64-8 / DPR 462/01",14,290);
+    doc.text('Pag. '+p+' di '+pages,182,290);
+  }
+
+  const name='Verifica_'+slug(d.numero||d.committente)+'_'+(d.dataVerifica?d.dataVerifica.split('-').reverse().join(''):'')+'.pdf';
+  return{doc,name,d};
+}
+
+function isNative(){return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());}
+async function sharePdf(doc,name){
+  const blob=doc.output('blob');
+  if(isNative()&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Filesystem&&window.Capacitor.Plugins.Share){
+    try{
+      const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onloadend=()=>res(String(r.result).split(',')[1]);r.onerror=rej;r.readAsDataURL(blob);});
+      const {Filesystem,Share}=window.Capacitor.Plugins;
+      await Filesystem.writeFile({path:name,data:b64,directory:'CACHE'});
+      const uri=(await Filesystem.getUri({path:name,directory:'CACHE'})).uri;
+      await Share.share({title:name,url:uri});
+      return;
+    }catch(e){/* fallback sotto */}
+  }
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+$('btnPdf').addEventListener('click',async()=>{
+  const r=generatePDF();if(!r)return;
+  const arc=loadArch();const dd=r.d;if(!dd.numero)dd.numero='SN-'+Date.now().toString().slice(-6);
+  arc[archKey(dd)]=dd;saveArch(arc);renderArch();
+  $('numero').value=dd.numero;updateFileName();saveDraft();
+  await sharePdf(r.doc,r.name);
+  toast('PDF generato');
+});
+
+/* ---------- Init ---------- */
+$('hdrLogo').src='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCABpAKADASIAAhEBAxEB/8QAHQAAAAcBAQEAAAAAAAAAAAAAAAQFBgcICQECA//EAEEQAAAFAwIDBAgDBgMJAAAAAAECAwQFAAYRBxIIITETIkFRCRQVMlJhcYFCkaEWM2JykqIjscEkNENTgrLR4fD/xAAdAQAABwEBAQAAAAAAAAAAAAACAwQFBgcIAAEJ/8QANREAAQMDAwIEBQIEBwAAAAAAAQACAwQFEQYSITFBBxNRcRRhgZGhCBUiMkKxFiMkYtHh8P/aAAwDAQACEQMRAD8A0FoUKFfKoKcIUKpzxc8dL3h5v5ra8PBtpdYzUHDg7g4l2iIiAAXH8tRnb3pDtW7qQItDaVGkUDm2lOggscv51eNv8JNRV9vjuTAxsTxkFzg3j6pudXRtcWdwtEqFZ8Xvx86v6bxyT+5dLUohoqfsyKuN5SmP5UUsP0iGqWpqrpK2dNW0wdqUorA2Mc2wB6Zpyb4L6mdTGsHl+WP6t7cffKK/c4N+znPstEqFUPl+MzXiDQBZ3oyqBBzzImqYP0pkwvpO74mroYQaVkMiv3TkrYqG84HE4mxiiIvBzUlRE+aAxva0ZOHtOPsUM3CIdQfstJqFFo8yizFuosAFVOQDHKHQBxzozmqLmidC8xu6hOQOUKFChSdeoUKFCuwuQoUK+S65G5BMcwFAPOhsYXnDUBzwwbndF9c0kyc4kyymHeP4hSZJzp18kRHaXzDqFIpjGVMJjDkw9Rqb2+xk4kn+yr666mawGKk6+q+zt4o5V3n5iNfOuUOQhU3YxrG7GDAVbSSPleXvOSVIVcOYEyGMPIChka7RV+19fYuG28Uu2TMTeXqXIYyFUvBtErS/plaMKpppRoFG6+a3XlqxeLP2lGJyJ2cK0XDKagJdztTB4l5dPPdVx2UQ0i2ybdo3SbIEDBSJEAoAH2pNsmzWNh2swgo7d6o0JtKJuph8TD8xpdXWK3ROob3ShkasPUWp62/1TYI5CIWgNY3OAAOOnzSSGFsbS7ueqzL9K3qKEhd1s2e3WMdNmgL1cpRAS7jci/cMG/Opo9F7pz+zOiz64liADibdmEptolEUyd0P13VQLiWvNTWHiKuF4gcFiuX4M2pg55IUdhfyxWyejFlpadaWW1bySYpgxZJpmDw3Y54+9ap8Saj/AAh4c22wxnEkwBd6+p/KYqQedVul7BPc6ZDgAGKAl8QEKpTdehkTK8fsDJMWJG7dvHe13pSFyQVgExSm+u7aNXYxTUjNPWEVf0vdpVVVpKSQTbn3jyIQm7AF/qGsr6V1TUWEVREjgZI3NGO5Pr9Mp9nhE235FOvpRCano63I5V/KPEY9iiGVHDg4ETIHzEaPGOUnUcVln6STiQNeF1oWHb8gY8RFHEz8UT91Rf4R8wL/AJ5px8PtEVWvLw2hiJbH1c7GcD/tFVVUKZm4rRS0NbrFv2SFhb90Rko9L1QRcFE4/QPGnzWHfCdpZJas6ptmETdJLTctSg59d7XYrgB/CHiNbT2bAr2vANo51Lu5xdEuDPXgFA6n5AAVJ/FXw7t+g6qOCkqDIXDkEcj556Y/KLoqt1SMuGEu0M18FXKaJBMsqVIPM4gAUyp/VGCYukmRZpim4WNsTKK5dxz/AAlDxGqaobNW3B2IIiR6r2tuMFDHvlP07p1yE0iyAc5OfwKFNd8+UkDD2g93wL4UXE51DmOcciPjSLP3lBWqgKsxLso0nPm4WAgY+o4qwrXYS3DYo97/AGyqnuN8qLgS1vDPRLIBivCa6ap1CkUIcSDgxSjkSj8/KkILiYXPbq7yEkEpNoOAMqxU3mEmf8QCbe9u25xjnmox099q/tE6TemVFt6049mETUBYCpe03AgIgHNH/ZBSDHQxeo7+6EygtLxHI+c7S3jB4Kj23jKnAKGKFCmBEqQKFChVFBaTQqLuJrUANM9ELsmwV7JYjI6SIgbA7z90P86lGqGelU1ECLsW3bRbq7VpNwLpYuOqZPd/uN+lWt4aWN2oNT0dHjLdwJ9hyUhrZPKhJVQOCewFdTuJG3U1iisg1XGRcqHLuLtJ3sD9Tcq2x2gAAAcgAMAFZz+if06A5buvVYmQwSObGHz5mP8A6VozVofqAvYuGpRb4jllO0N+vUpFa48RF/quCNN6+r9hNOLYez8+9TYxjQu5RU49fkXzH5V7vO8I6yYBzLyZjlbIBnYkQTnUN4EKUOph8qyF4yOKK6dbbqPDvo9xb8FHK7kItcokVE3gdUPix4eGah/hj4cVOvLgGuO2Bn857+wSisq207DzypC4hvSUXPezh7EWGmNvQRtyIOz/AO8ql8/4PtVK3bpV+4UXXUMquoYTHUOORMI+Oa+Vdr6p6a0jZ9J0oprVCGep7n3Kg81Q+Y5kOUYjnzmLckctHCjZwmIGIqkbaYoh0GtkeCHVGcvvh7h5K53Crx6mqo3TcrGEVFyF903+n2rLbQzQG5tcbkRYRLQyceBw9akFSj2SJPr4j8q1507sVhpvZcXbcYAgyYIlSLn8Q/iN9xyP3rNnj3W2muoordw6cOByOrR6ZSJ92dQZ8rklQvxOaWNS6Z3RcSl53E2cNkzuU9785kwHPdT2hy2+FU14FLRXvvXZk6dqrOmUSmL0wqqGHn0KH3MIVaj0iV9hbWjSMKkptcTTkCCUP+WTmb86hPhAmw0j0slJ1u19duy53YR8MxKXmsJfxh/CAm5/SkOko6iDQk8rgC+U7WHAGAeM59AM/ZNhmkmp3yyHJKtTrxrw8sx03tGy2P7QX2/D/DaFLuI0TH/iqc+X3qq+tnCRe5tPJfUC77z9oTbdLt1mYbhTAPgKPjjHkHhVxdE9GyaexislLqjKXfJj6xJSSveMY4/gL5ELzwHzqKvSG6iGtTRskKgfavNLlSNgcD2Yd41RDSF0NJe6a02VgJLsPkIyXevXoOqbqd4ZKI41X/0btwS6eqkjDpOVDxSrEyqqBjDsKYpgEDfXrWlQ5GqL+jP09Ozh7iu5dLB3Rismygh0IXmbH3x+VXnDlmmHxbqIJtTStgGNoAOPUdUGtcDKQEBoUKFUsmpSFQoUBHFUbhaTQrGr0hWow37xGyjZJbtGUOmSPSAB5AJff++4TF+1a36k3g2sKx5ufdnKmjHtFF+8bG4wByD86w+sxo61g14jUnBu2czUwCipjj729TI1tX9O1pEMtdqGZv8ADCwgH59T+FHbu84ZGO61y4LNOw024eLWZHQFJ47R9ccbw57j8w/Sp1orGRqMTHtWaBATSQSIkUodAAoYo1WVtS3N93vFTXScl7ifynuBgjjDR2TJ1ivBrp7p1PXK5SBb2Y0UcJkEOpgDlWHzdrcGv+qpkkDA6np12JgFU2A3GyPMfLlW03E1bT28NCLzio8naPF45XsifEOOlY18PV7I6Wa4WvOPgArdk9KVftOQEKI7RMP0zW2v09j4bT9yrKQB1S3OAfQDj7lRi7uAlaD0VgIH0YeoTgplZmZioZMo42mOJxEPPlUzae+jhsm3HKbi4ZFxcixMGKgI9kl49dvOrdpy5Zxuk8TcFcoLEA6ahByUQEM8q4AgXORxmohc/E/V9Zvp55dh7hoxj69VXdbcWyHbAMD8pJty1oezotGOhY1tGMkgwRFsmBAD8qWhqM7g1si2t2s7Wgm6lxTqqgesItB7jNLxOqfoH060/wCWk0oqMcvVjARFukZUwiPTBc1XNTS10s7HVmS6Qjr1KY8OccuWaPpFL+/aTV9vCIqbm8O1AggA5DtD8zY/Spx4DNHXbW12N7XGUTKimKEO3UL3W6W7cY4B5nMaqjWtDO+JDiZ2qCY6MnJHXWz3uzQKbdj+nu1rrFRjaFjWrBmmCLVsmVJJMOgFAK0tr+6t0zpyj05T8SFoLv8A3zTxVO8mFsQ7o6NZccft+qXzrd7BZn7ZvEJkalAOhlDczD/2l/6a0tvS4kbRtOXmVxwiybHWMOcdArKHQa3nGufEuzVfYOmu/PIOjGDu7AHdtqOeEVC2nNZqCccQMOPchAt7MbpT2WlnDtYCemujltQoEAjgjUqrjnnKh+8P+dSUWm3G3lHP7od24yA67hgkRRdUgZTT3dCGN4H8dtOUA2j51RV7mnq6+WpqBgvJP3TXM4ukJK7QoD1oUxIlSFTW1Au5/aEQm5jrffXE4OfaDdltyUPMdwhyp01DXFRq8+0W0tVlYpNI0o7cJsmyi/uInOPvm+QVWun6A3K5Q0jGBxccYOQPrjlaNlcGMJKrfxWTWueutqmtaA05dQkMsYDOTrOCCqtjoGM8g61WTTXhX1z0yvmGudnZCizmMcFcJoqLEwoJfDrWjEFoJIrW4jIhqHcBrmcolWGR7cpkd4hkBBH3Nucd3+6l/h1Nd7mzXj29novplZ8qnkpdpQTTHYXYHkON33rVFL4ju0rZJ7dbYoTG07XNw7JJyD3578pidSefIHvcUTsPWO8Z94yYzOmctBmWMBVHZ1kzop+ZjCA5/SpcWcptU9yg4CislLox5OY5P8NNp+/WemyY+Cj4BWc5aRt5nFQyAQMPYZ59slIq+9x29hjadz/7I1Kz/b7kwMCZR6CI8xrOTil4F5hzcb+6bBQB6yeHFdeMKbCiRze8JPMBqdZNircHF6xYR716VjERovpFP1k4pKLH7pAEmcB8X5VY/wC9X7Yq6r8OJYpre8HzGAuaRxg9MqvZ7jUySeY85KzG0ovjiN0qSLbsXBybxqiOEmz1oKhE/of4fvVh7atbiE1kaFTu2aRseIP++SYJgR2oUfwlHw6edWzIQojuEoCbzopMzDSAjHMg/cJtWbYgqKqqm2gUoeNPdy19+6S7qa3xsld/UG5OfUJC6p8w52DJTa040ot7SyHKwhGhSibms6V7y65/iObxGkTiLbXC/wBHrhY2wyVkJd6h6qmkkJQECn5GHn8s0+oWaSuGIaybYpyIuUu0R7UMDtHoIhTQ0nUv0XE8N8EZAgLowxvqnXsefMf0qDU1RUx1Ruc7g58TgSHdz6Y+SSguyCVV/gY4bbo05vmXuC7YU0acjfsWwrnKIiJhyYxcf/c6vDt+dAnjXfnQdT6jqtT15r6oAHAGB0AC9nmdK/JUXcTdtS93aJ3NFwaQryS6HcSIHeOADkQCqMcJ2iWsEHeyzuKjBtpBwiZq5kZRDApEz3tgDz3+XhWnAhuoAGKkmn9dVen7TPaYIQ5spzlwzjjH1RkVSYo3RgdU2bAsdhYEAnHsxOuqYwqOHS47lXCg+8oc3iI05gDNc2/OugGKreomlqZDNLyT1KRkl5yUKFChSRBUhUwNcdIYrXDTuQtWVMZIjku5FcvVJUOhgp/1AmlPEDD3PfV+W+7kQK/jZQyTZupku9ICgXuZ698o1BdO0ly851xtv80GHflaGqp4YWf55wFE/D9rjcOiF5k0X1WUEqiRwThJ1Tkk4T5AQhjD1D4R+1TNr5r0z0gtRI7FqV9KP1QaxrNPG5dYenLy+dQ1xoMWmpklY8XHJFdXZ7UIZsKHM6CJeZzqDjkT3aIaywJzcSukZpUxhh0EzFTWPzL6yUB2lE3xDyrSEdgtV7qqW71TNkj2udJH2LmDqB/uKrmrvbywwwHj174UlltS4VdPXklcNxOkrgO1M6Ou1U7NFqfbu2kL+IC/xbs18eHTVdfUjSVK4Jc6RHDdRZFwuA4IcEvx5+YYorxJ30vF2E4t6ATNJ3TPlMyZs2w5MQDcjKj5AUvjTGu6BLw3cJS0IipskTt/VTKF/EuqbAmH8/1o+kooK2jZDO0NkkkAYBgYaOp9uih5O9mT1JR/hbbvLpXvu/zJl9dnZJRNoKhsD2CfIgCPw8x8K+Vp3Fc7viseQYTriRiGEX2kg2MUAbprHxtAgfn/AHVIGjBY6zdIGLJur2qMUx3rLgOSHU27j7TePOoi4UrjbSMbdV1lWI7uW5pRXs25feTSIblv8iB1p3INQ+4TuaCGgRtBHTsD9ACveHbj9E/bt1AlpriTtmyIN+LVkwZnfSxS894D+7Ib74/qphcYUOteF72LZbSYfpLTbwvrLJuvtSI3JzMcQxzHr73lSnwzEbSup2oN0iqZy8fSBmaKm3A7ER75xz7pRGi1sSKV6cXF0T7jco0ttAkSwbCBdxlj+9tLz8jfnR9NTxWyv3wNH+niyTjq4j/k/hBGGu9gpE1Z7TSXQqVctbgkEnUa32tXSgkFUTj3SAbu7QLkQoxad4r6Y6CMbivZ8q4eoMSuXRlB7yhz97YX+LvYph8W0yzmp/T+xXK6bdrKSIPHiipsE7BLng3yGvlxhIGntJ7dMk3VJApy7cHhlCCAA3KbaBzcuQU201DHW09JFV8Gd5c44GcDoM/NeDDtvzKf+loXDqjBBdFyvVo5vJk3sYdqbaDdEwdwTj1Mcwc/LvdKR+H3UWSuO5b8s+Tfe0zW8+7Fu+EQBQUjbsFEfiDz/wDNPi7b/h9ONOBlCnBZNFqRNo0QNkzhTG0hSFAe8YRqJtCLNd6MaUXbfN0gKM7MdrKO0fxJABREhfr3v1CkrIoaqnqXSMDQ5zWxj556/ZDAbgkolY1+XI81sv1JrMu52MZKEYR7BbGBcCXccRMBehO9n+avFwPb1t/iPsWDRuxxJKSRFXMpGbCggkiHugQvh4l3G+Glzg807ND2I5u2UA605crkz5RRQc7ExNkoB9QwYf8A1SLovMNr2131JvhxtXKzN7IYgXmKSSZdxjfIBMBf6qkMjqVtTViCNpbDHsJwOX4x/fnheggkj5JxaxanqQGttl2xKPl4a15RI+XSXcKsvu2lSMfwD3enxBUi2jAz8Ve0+u+lV39tmSSCOQVwHZm57+fj4daj+/Yy3OJXQxw/eikxXRSUXbLgcN7JZMRyOfD3edOfhgmZ2d0Ut1zcQG9fKkKZTn95RMo4IcfqABURuLI47KJY2Br2nY9pHzyHA+vZEuwGc9RwpVoUBoVVqRpxytwAmcyTcAOIdRqPpGx4CSAvrsOzXwO4DGSDcBvPPnThD94f+avDj3aJt0f7cMU7iCe6eblcZ617nyHgdB2CQ4ezoW33CriOjUGy6od9UCAJzfU3WjU7b0ZczP1WUYov0QHcUq5d2B86PBXadXVU5cH7zu9c8po3JNi7WiYZUyzRimksYuBVEMn/AKh514uO1om74pSNmo9CSZHEDCi4JuLkOg0sB0GvFB+JmErZA85HfPK7KKx8UzYx6bFBuki0TJ2ZUEyABAL0xjFJlsWFbtnFXCFh2kb25963q6YFA4/Ol4te/ChNrKhm9oef4uvPX3Xbki29ZsJaYOgiI1vH+sqist2JADeceojXzj7IgoqceTDOLbN5N4OV3aZMHU+o0uD0r0PQKB8bUO3uMh5GDyefddlIM7Y1v3JIsX8rENH71kIi3WXTATJj8qVX0e1kGyjZy2ScNlC7TonJkpi+WKMh1rz40L4mc7G7z/D056ey7ckKNsW34pZuo0iWyRm/JITEz2QeRM+79qUpCJZzLJZm/bJvGipdqiC5dxDh8w8aOjQ/CNc6qnlcN7zkd8rty+DNm3j2qTZqiRBukTsyIphgCl8gCkuHsyDt4jwkbGNmRXpzKOgRTAvbGHqI0tfjrputA+ImY07Xnnrz1917uTaPp7bRkhT9itCpG270iEwQ+3puL0H75pwIt026ZU0igkkUMFIUOQfSvR+gV6HrQJamaVuJHkri7KFChQpOgL//2Q==';
+const draft=LS.get('verifiche_draft',null);
+if(draft)populate(draft);else populate({dataVerifica:todayISO(),verificatore:LS.get('verificatori',[])[0]||''});
+$('verificatore').addEventListener('change',()=>rememberVerif($('verificatore').value));
+renderArch();
+
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
+</script>
+</body>
+</html>
