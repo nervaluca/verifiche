@@ -1,0 +1,18 @@
+{
+  "name": "verifiche-tensolutions",
+  "version": "1.0.0",
+  "description": "Rapporto di verifica/collaudo impianti elettrici Ten Solutions",
+  "scripts": {
+    "sync": "cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/filesystem": "^6.0.1",
+    "@capacitor/share": "^6.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.1.2"
+  }
+}

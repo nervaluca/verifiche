@@ -1,0 +1,10 @@
+{
+  "appId": "it.iw1fzr.verifiche",
+  "appName": "Verifiche",
+  "webDir": "www",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
