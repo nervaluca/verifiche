@@ -699,6 +699,22 @@ function generatePDF(){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
   let y=16;
+
+  /* Numerazione foto: assegnata subito così le tabelle possono richiamarla come "Foto N" */
+  const photos=[];
+  const photoRefs={pe:[],isol:[],diff:[],emerg:[]};
+  const rowPhotoLabel={pe:'PE/EQP',isol:'Isolamento',diff:'Differenziale',emerg:'Emergenza'};
+  const rowPhotoKey={pe:'punto',isol:'circuito',diff:'circuito',emerg:'ubicazione'};
+  ['pe','isol','diff','emerg'].forEach(sec=>{
+    (d[sec]||[]).forEach((r,i)=>{
+      if(r.foto){
+        photos.push({url:r.foto,caption:rowPhotoLabel[sec]+' \u2013 N.'+(i+1)+(r[rowPhotoKey[sec]]?' \u2013 '+r[rowPhotoKey[sec]]:'')});
+        photoRefs[sec][i]=photos.length;
+      }
+    });
+  });
+  (d.fotoGeneral||[]).forEach(p=>{if(p.url)photos.push({url:p.url,caption:p.caption||'Foto documentazione'});});
+
   doc.setFontSize(15);doc.setFont(undefined,'bold');doc.setTextColor(21,34,56);
   doc.text('VERIFICA IMPIANTO ELETTRICO',14,y);y+=6;
   doc.setFontSize(9);doc.setFont(undefined,'normal');doc.setTextColor(100,110,125);
@@ -730,23 +746,29 @@ function generatePDF(){
   y=ensureSpace(doc,y,24);
   y=addSectionBar(doc,"4. CONTINUIT\u00c0 DEI CONDUTTORI DI PROTEZIONE (PE / EQP)",y);
   if(d.pe.length){
-    y=rowsTable(doc,['N.','Punto di misura verificato','R (Ohm)','Esito'],
-      d.pe.map((r,i)=>[i+1,r.punto,r.r,r.esito]),y);
+    const hasPh=d.pe.some(r=>r.foto);
+    const head=['N.','Punto di misura verificato','R (Ohm)','Esito'];if(hasPh)head.push('Foto');
+    y=rowsTable(doc,head,
+      d.pe.map((r,i)=>{const row=[i+1,r.punto,r.r,r.esito];if(hasPh)row.push(photoRefs.pe[i]?('Foto '+photoRefs.pe[i]):'');return row;}),y);
   }else{doc.setFontSize(9);doc.setTextColor(140,140,140);doc.text('Nessun dato inserito',14,y+2);doc.setTextColor(20,20,20);y+=8;}
 
   y=ensureSpace(doc,y,24);
   y=addSectionBar(doc,'5. RESISTENZA DI ISOLAMENTO',y);
   if(d.isol.length){
-    y=rowsTable(doc,['N.','Circuito','Tra','V prova (V)','R isol. (MOhm)','Esito'],
-      d.isol.map((r,i)=>[i+1,r.circuito,r.tra,r.vprova,r.risol,r.esito]),y);
+    const hasPh=d.isol.some(r=>r.foto);
+    const head=['N.','Circuito','Tra','V prova (V)','R isol. (MOhm)','Esito'];if(hasPh)head.push('Foto');
+    y=rowsTable(doc,head,
+      d.isol.map((r,i)=>{const row=[i+1,r.circuito,r.tra,r.vprova,r.risol,r.esito];if(hasPh)row.push(photoRefs.isol[i]?('Foto '+photoRefs.isol[i]):'');return row;}),y);
   }else{doc.setFontSize(9);doc.setTextColor(140,140,140);doc.text('Nessun dato inserito',14,y+2);doc.setTextColor(20,20,20);y+=8;}
 
   y=ensureSpace(doc,y,30);
   y=addSectionBar(doc,'6. PROVE DEI DISPOSITIVI DIFFERENZIALI',y);
   y=kvTable(doc,[['Strumento utilizzato',d.diffStrumento||'—']],y);
   if(d.diff.length){
-    y=rowsTable(doc,['N.','Circuito / Ubicazione','In (A)','Idn (mA)','Tipo','t@Idn (ms)','t@5Idn (ms)','I int. (mA)','Tasto test','Esito'],
-      d.diff.map((r,i)=>[i+1,r.circuito,r.in,r.idn,r.tipo,r.tIdn,r.t5Idn,r.iInter,r.tastoTest,r.esito]),y);
+    const hasPh=d.diff.some(r=>r.foto);
+    const head=['N.','Circuito / Ubicazione','In (A)','Idn (mA)','Tipo','t@Idn (ms)','t@5Idn (ms)','I int. (mA)','Tasto test','Esito'];if(hasPh)head.push('Foto');
+    y=rowsTable(doc,head,
+      d.diff.map((r,i)=>{const row=[i+1,r.circuito,r.in,r.idn,r.tipo,r.tIdn,r.t5Idn,r.iInter,r.tastoTest,r.esito];if(hasPh)row.push(photoRefs.diff[i]?('Foto '+photoRefs.diff[i]):'');return row;}),y);
   }else{doc.setFontSize(9);doc.setTextColor(140,140,140);doc.text('Nessun dato inserito',14,y+2);doc.setTextColor(20,20,20);y+=8;}
   if(d.diffNote){doc.setFontSize(9);doc.setTextColor(90,100,120);
     const lines=doc.splitTextToSize('Note: '+d.diffNote,182);doc.text(lines,14,y);y+=lines.length*4+4;doc.setTextColor(20,20,20);}
@@ -754,8 +776,10 @@ function generatePDF(){
   y=ensureSpace(doc,y,24);
   y=addSectionBar(doc,'7. VERIFICA ILLUMINAZIONE DI EMERGENZA',y);
   if(d.emerg.length){
-    y=rowsTable(doc,['N.','Ubicazione / N. lampada','Tipo','Autonomia dich.','Autonomia ril.','Esito'],
-      d.emerg.map((r,i)=>[i+1,r.ubicazione,r.tipo,r.autDich,r.autRil,r.esito]),y);
+    const hasPh=d.emerg.some(r=>r.foto);
+    const head=['N.','Ubicazione / N. lampada','Tipo','Autonomia dich.','Autonomia ril.','Esito'];if(hasPh)head.push('Foto');
+    y=rowsTable(doc,head,
+      d.emerg.map((r,i)=>{const row=[i+1,r.ubicazione,r.tipo,r.autDich,r.autRil,r.esito];if(hasPh)row.push(photoRefs.emerg[i]?('Foto '+photoRefs.emerg[i]):'');return row;}),y);
   }else{doc.setFontSize(9);doc.setTextColor(140,140,140);doc.text('Nessun dato inserito',14,y+2);doc.setTextColor(20,20,20);y+=8;}
 
   y=ensureSpace(doc,y,30);
@@ -780,27 +804,20 @@ function generatePDF(){
   doc.setTextColor(20,20,20);
   y+=sigH+10;
 
-  const photos=[];
-  const rowPhotoLabel={pe:'PE/EQP',isol:'Isolamento',diff:'Differenziale',emerg:'Emergenza'};
-  const rowPhotoKey={pe:'punto',isol:'circuito',diff:'circuito',emerg:'ubicazione'};
-  ['pe','isol','diff','emerg'].forEach(sec=>{
-    (d[sec]||[]).forEach((r,i)=>{
-      if(r.foto)photos.push({url:r.foto,caption:rowPhotoLabel[sec]+' \u2013 N.'+(i+1)+(r[rowPhotoKey[sec]]?' \u2013 '+r[rowPhotoKey[sec]]:'')});
-    });
-  });
-  (d.fotoGeneral||[]).forEach(p=>{if(p.url)photos.push({url:p.url,caption:p.caption||'Foto documentazione'});});
-
   if(photos.length){
     y=ensureSpace(doc,y,20);
     y=addSectionBar(doc,'10. DOCUMENTAZIONE FOTOGRAFICA',y);
     const imgW=90;
-    photos.forEach(p=>{
+    photos.forEach((p,idx)=>{
       let ratio=0.75;
       try{const props=doc.getImageProperties(p.url);ratio=props.height/props.width;}catch(e){}
       const imgH=Math.min(120,imgW*ratio);
       y=ensureSpace(doc,y,imgH+12);
-      doc.setFontSize(8.5);doc.setTextColor(90,100,120);
-      doc.text(p.caption,14,y);y+=4;
+      doc.setFontSize(8.5);doc.setFont(undefined,'bold');doc.setTextColor(21,34,56);
+      doc.text('Foto '+(idx+1),14,y);
+      doc.setFont(undefined,'normal');doc.setTextColor(90,100,120);
+      doc.text(' \u2013 '+p.caption,14+doc.getTextWidth('Foto '+(idx+1)),y);
+      y+=4;
       try{doc.addImage(p.url,'JPEG',14,y,imgW,imgH,undefined,'FAST');}catch(e){}
       y+=imgH+8;
       doc.setTextColor(20,20,20);
