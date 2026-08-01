@@ -629,22 +629,22 @@ function generatePDF(){
 
   y=addSectionBar(doc,"3. MISURA DELL'IMPIANTO DI TERRA",y);
   y=kvTable(doc,[
-    ['Resistenza di terra R (\u03A9)',d.terraR||'—'],['Metodo di misura',d.terraMetodo||'—'],
-    ['Strumento utilizzato',d.terraStrumento||'—'],['I\u0394n max (A)',d.terraIdnMax||'—'],
-    ['Coordinamento R \u00d7 I\u0394n \u2264 50 V',d.coordinamento==='si'?'Verificato':'Non verificato']
+    ['Resistenza di terra R (Ohm)',d.terraR||'—'],['Metodo di misura',d.terraMetodo||'—'],
+    ['Strumento utilizzato',d.terraStrumento||'—'],['Idn max (A)',d.terraIdnMax||'—'],
+    ['Coordinamento R x Idn <= 50 V',d.coordinamento==='si'?'Verificato':'Non verificato']
   ],y);
 
   y=ensureSpace(doc,y,24);
   y=addSectionBar(doc,"4. CONTINUIT\u00c0 DEI CONDUTTORI DI PROTEZIONE (PE / EQP)",y);
   if(d.pe.length){
-    y=rowsTable(doc,['N.','Punto di misura verificato','R (\u03A9)','Esito'],
+    y=rowsTable(doc,['N.','Punto di misura verificato','R (Ohm)','Esito'],
       d.pe.map((r,i)=>[i+1,r.punto,r.r,r.esito]),y);
   }else{doc.setFontSize(9);doc.setTextColor(140,140,140);doc.text('Nessun dato inserito',14,y+2);doc.setTextColor(20,20,20);y+=8;}
 
   y=ensureSpace(doc,y,24);
   y=addSectionBar(doc,'5. RESISTENZA DI ISOLAMENTO',y);
   if(d.isol.length){
-    y=rowsTable(doc,['N.','Circuito','Tra','V prova (V)','R isol. (M\u03A9)','Esito'],
+    y=rowsTable(doc,['N.','Circuito','Tra','V prova (V)','R isol. (MOhm)','Esito'],
       d.isol.map((r,i)=>[i+1,r.circuito,r.tra,r.vprova,r.risol,r.esito]),y);
   }else{doc.setFontSize(9);doc.setTextColor(140,140,140);doc.text('Nessun dato inserito',14,y+2);doc.setTextColor(20,20,20);y+=8;}
 
@@ -652,7 +652,7 @@ function generatePDF(){
   y=addSectionBar(doc,'6. PROVE DEI DISPOSITIVI DIFFERENZIALI',y);
   y=kvTable(doc,[['Strumento utilizzato',d.diffStrumento||'—']],y);
   if(d.diff.length){
-    y=rowsTable(doc,['N.','Circuito / Ubicazione','In (A)','I\u0394n (mA)','Tipo','t@I\u0394n (ms)','t@5I\u0394n (ms)','I int. (mA)','Tasto test','Esito'],
+    y=rowsTable(doc,['N.','Circuito / Ubicazione','In (A)','Idn (mA)','Tipo','t@Idn (ms)','t@5Idn (ms)','I int. (mA)','Tasto test','Esito'],
       d.diff.map((r,i)=>[i+1,r.circuito,r.in,r.idn,r.tipo,r.tIdn,r.t5Idn,r.iInter,r.tastoTest,r.esito]),y);
   }else{doc.setFontSize(9);doc.setTextColor(140,140,140);doc.text('Nessun dato inserito',14,y+2);doc.setTextColor(20,20,20);y+=8;}
   if(d.diffNote){doc.setFontSize(9);doc.setTextColor(90,100,120);
